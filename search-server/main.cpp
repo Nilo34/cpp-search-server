@@ -14,7 +14,7 @@ using namespace std;
 
 /* Подставьте вашу реализацию класса SearchServer сюда */
 
-/*const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
 string ReadLine() {
     string s;
@@ -242,14 +242,14 @@ private:
         return matched_documents;
     }
 
-};*/
+};
 
 /*
    Подставьте сюда вашу реализацию макросов
    ASSERT, ASSERT_EQUAL, ASSERT_EQUAL_HINT, ASSERT_HINT и RUN_TEST
 */
 
-/*template <typename T, typename U>
+template <typename T, typename U>
 void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& u_str, const string& file,
                      const string& func, unsigned line, const string& hint) {
     if (t != u) {
@@ -292,7 +292,7 @@ void RunTestImpl(Func_Testa func_testa, const string& func_testa_str) {
     cerr << func_testa_str <<" OK"s << endl;
 }
 
-#define RUN_TEST(func) RunTestImpl(func, #func)*/
+#define RUN_TEST(func) RunTestImpl(func, #func)
 
 // -------- Начало модульных тестов поисковой системы ----------
 
@@ -422,6 +422,75 @@ void ProverkaRatinga() {
     ASSERT_EQUAL_HINT(doc0.rating, 3, "Incorrect rating calculation"s);
 }
 
+// тест проверяющий поиск с пользовательским предикатом
+
+void ProverkaPolzovatelskogoPredicata() {
+    
+    const int doc_id2 = 32;
+    const string content2 = "city pushistiy blochastick real pudel"s;
+    const vector<int> ratings2 = {1, 2, 3};
+    
+    const int doc_id3 = 47;
+    const string content3 = "cat derevnya rijiy"s;
+    const vector<int> ratings3 = {12, 7, 3};
+    
+    const int doc_id = 42;
+    const string content = "cat city pushistiy blochastick"s;
+    const vector<int> ratings = {5, 2, 3};
+    
+    SearchServer server;
+    server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings2);
+    server.AddDocument(doc_id3, content3, DocumentStatus::ACTUAL, ratings3);
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    const auto found_docs = server.FindTopDocuments("pushistiy cat blochastick"s, [doc_id3] (int document_id_tek, DocumentStatus, int) { return document_id_tek == doc_id3; });
+    ASSERT_EQUAL(found_docs.size(), 1u);
+    const Document& doc0 = found_docs[0];
+    ASSERT_EQUAL_HINT(doc0.id, doc_id3, "Incorrect search by user predicate"s);
+}
+
+// тест проверяющий поиск с заданным статусом
+
+void ProverkaPoiscaSZadanimStatusom() {
+    
+    const int doc_id2 = 32;
+    const string content2 = "city pushistiy blochastick real pudel"s;
+    const vector<int> ratings2 = {1, 2, 3};
+    
+    const int doc_id3 = 47;
+    const string content3 = "cat derevnya rijiy"s;
+    const vector<int> ratings3 = {12, 7, 3};
+    
+    const int doc_id = 42;
+    const string content = "cat city pushistiy blochastick"s;
+    const vector<int> ratings = {5, 2, 3};
+    
+    SearchServer server;
+    server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings2);
+    server.AddDocument(doc_id3, content3, DocumentStatus::BANNED, ratings3);
+    server.AddDocument(doc_id, content, DocumentStatus::IRRELEVANT, ratings);
+    const auto found_docs = server.FindTopDocuments("pushistiy cat blochastick"s, DocumentStatus::BANNED);
+    ASSERT_EQUAL(found_docs.size(), 1u);
+    const Document& doc0 = found_docs[0];
+    ASSERT_EQUAL_HINT(doc0.id, doc_id3, "Incorrect search with specified status"s);
+}
+
+// тест проверяющий коректное вычисление релевантности
+
+void ProverkaVichisleniyaRelevance() {
+    
+    const int doc_id = 42;
+    const string content = "cat city pushistiy blochastick"s;
+    const vector<int> ratings = {8, -3};
+    
+    SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    const auto found_docs = server.FindTopDocuments("pushistiy cat neblochastick"s);
+    ASSERT_EQUAL(found_docs.size(), 1u);
+    const Document& doc0 = found_docs[0];
+    const float predel_sravneniya = 1e-5;
+    ASSERT_HINT((doc0.relevance - 0.51986) < predel_sravneniya, "Incorrect search with specified status"s);
+}
+
 // Функция TestSearchServer является точкой входа для запуска тестов
 void TestSearchServer() {
     RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
@@ -430,9 +499,10 @@ void TestSearchServer() {
     RUN_TEST(ProverkaMatchinga);
     RUN_TEST(ProverkaSortirovkiPoRelev);
     RUN_TEST(ProverkaRatinga);
-    //RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent); // проверка на предикат
-    //RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent); // Поиск по статусу
-    //RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent); // проверка релевантности
+    RUN_TEST(ProverkaPolzovatelskogoPredicata);
+    RUN_TEST(ProverkaPoiscaSZadanimStatusom);
+    RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
+    RUN_TEST(ProverkaVichisleniyaRelevance);
 }
 
 // --------- Окончание модульных тестов поисковой системы -----------
