@@ -402,24 +402,37 @@ void ProverkaSortirovkiPoRelev() {
     ASSERT_EQUAL(found_docs.size(), 2u);
     const Document& doc0 = found_docs[0];
     const Document& doc1 = found_docs[1];
-    ASSERT_EQUAL_HINT(doc0.id, doc_id, "Incorrect sorting by relevance"s);
-    ASSERT_EQUAL_HINT(doc1.id, doc_id2, "Incorrect sorting by relevance"s);
+    ASSERT_HINT((doc0.relevance > doc1.relevance), "Incorrect sorting by relevance"s);
 }
 
 // тест проверяющий вычисление рейтинга
 
 void ProverkaRatinga() {
-    const int doc_id = 42;
-    const string content = "cat city pushistiy blochastick"s;
-    const vector<int> ratings = {5, 2, 3};
+    const int doc_id0 = 42;
+    const string content0 = "cat city pushistiy blochastick"s;
+    const vector<int> ratings0 = {5, 2, 3};
+    
+    const int doc_id1 = 32;
+    const string content1 = "city pushistiy blochastick real pudel"s;
+    const vector<int> ratings1 = {-1, -2, -3};
+    
+    const int doc_id2 = 47;
+    const string content2 = "cat derevnya rijiy"s;
+    const vector<int> ratings2 = {-12, 7, 3};
     
     
     SearchServer server;
-    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    server.AddDocument(doc_id0, content0, DocumentStatus::ACTUAL, ratings0);
+    server.AddDocument(doc_id1, content1, DocumentStatus::ACTUAL, ratings1);
+    server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings2);
     const auto found_docs = server.FindTopDocuments("pushistiy cat blochastick"s);
-    ASSERT_EQUAL(found_docs.size(), 1u);
+    ASSERT_EQUAL(found_docs.size(), 3u);
     const Document& doc0 = found_docs[0];
+    const Document& doc1 = found_docs[1];
+    const Document& doc2 = found_docs[2];
     ASSERT_EQUAL_HINT(doc0.rating, 3, "Incorrect rating calculation"s);
+    ASSERT_EQUAL_HINT(doc1.rating, -2, "Incorrect rating calculation"s);
+    ASSERT_EQUAL_HINT(doc2.rating, 0, "Incorrect rating calculation"s);
 }
 
 // тест проверяющий поиск с пользовательским предикатом
@@ -460,35 +473,70 @@ void ProverkaPoiscaSZadanimStatusom() {
     const string content3 = "cat derevnya rijiy"s;
     const vector<int> ratings3 = {12, 7, 3};
     
-    const int doc_id = 42;
-    const string content = "cat city pushistiy blochastick"s;
-    const vector<int> ratings = {5, 2, 3};
+    const int doc_id0 = 42;
+    const string content0 = "cat city pushistiy blochastick"s;
+    const vector<int> ratings0 = {5, 2, 3};
+    
+    const int doc_id1 = 39;
+    const string content1 = "city blochastick dog"s;
+    const vector<int> ratings1 = {4, 2, 7};
     
     SearchServer server;
     server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings2);
     server.AddDocument(doc_id3, content3, DocumentStatus::BANNED, ratings3);
-    server.AddDocument(doc_id, content, DocumentStatus::IRRELEVANT, ratings);
-    const auto found_docs = server.FindTopDocuments("pushistiy cat blochastick"s, DocumentStatus::BANNED);
+    server.AddDocument(doc_id0, content0, DocumentStatus::IRRELEVANT, ratings0);
+    server.AddDocument(doc_id1, content1, DocumentStatus::REMOVED, ratings1);
+    
+    auto found_docs = server.FindTopDocuments("pushistiy cat blochastick"s, DocumentStatus::BANNED);
     ASSERT_EQUAL(found_docs.size(), 1u);
-    const Document& doc0 = found_docs[0];
+    Document& doc0 = found_docs[0];
     ASSERT_EQUAL_HINT(doc0.id, doc_id3, "Incorrect search with specified status"s);
+    
+    found_docs = server.FindTopDocuments("pushistiy cat blochastick"s, DocumentStatus::REMOVED);
+    ASSERT_EQUAL(found_docs.size(), 1u);
+    doc0 = found_docs[0];
+    ASSERT_EQUAL_HINT(doc0.id, doc_id1, "Incorrect search with specified status"s);
+    
+    found_docs = server.FindTopDocuments("pushistiy cat blochastick"s, DocumentStatus::ACTUAL);
+    ASSERT_EQUAL(found_docs.size(), 1u);
+    doc0 = found_docs[0];
+    ASSERT_EQUAL_HINT(doc0.id, doc_id2, "Incorrect search with specified status"s);
+    
+    found_docs = server.FindTopDocuments("pushistiy cat blochastick"s, DocumentStatus::IRRELEVANT);
+    ASSERT_EQUAL(found_docs.size(), 1u);
+    doc0 = found_docs[0];
+    ASSERT_EQUAL_HINT(doc0.id, doc_id0, "Incorrect search with specified status"s);
 }
 
 // тест проверяющий коректное вычисление релевантности
 
 void ProverkaVichisleniyaRelevance() {
     
-    const int doc_id = 42;
-    const string content = "cat city pushistiy blochastick"s;
-    const vector<int> ratings = {8, -3};
+    const int doc_id0 = 42;
+    const string content0 = "cat city blochastick"s;
+    const vector<int> ratings0 = {8, -3};
+    
+    const int doc_id2 = 47;
+    const string content2 = "pushistiy cat pushistiy rijiy"s;
+    const vector<int> ratings2 = {7, 2, 7};
+    
+    const int doc_id1 = 39;
+    const string content1 = "derevnya neblochastick dog black"s;
+    const vector<int> ratings1 = {5, -12, 2, 1};
     
     SearchServer server;
-    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    server.AddDocument(doc_id0, content0, DocumentStatus::ACTUAL, ratings0);
+    server.AddDocument(doc_id1, content1, DocumentStatus::ACTUAL, ratings1);
+    server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings2);
     const auto found_docs = server.FindTopDocuments("pushistiy cat neblochastick"s);
-    ASSERT_EQUAL(found_docs.size(), 1u);
+    ASSERT(found_docs.size() == 3u);
     const Document& doc0 = found_docs[0];
+    const Document& doc1 = found_docs[1];
+    const Document& doc2 = found_docs[2];
     const float predel_sravneniya = 1e-5;
-    ASSERT_HINT((doc0.relevance - 0.51986) < predel_sravneniya, "Incorrect search with specified status"s);
+    ASSERT_HINT((doc0.relevance - 0.65067) < predel_sravneniya, "Incorrect search with specified status"s);
+    ASSERT_HINT((doc1.relevance - 0.27465) < predel_sravneniya, "Incorrect search with specified status"s);
+    ASSERT_HINT((doc2.relevance - 0.13515) < predel_sravneniya, "Incorrect search with specified status"s);
 }
 
 // Функция TestSearchServer является точкой входа для запуска тестов
@@ -501,7 +549,6 @@ void TestSearchServer() {
     RUN_TEST(ProverkaRatinga);
     RUN_TEST(ProverkaPolzovatelskogoPredicata);
     RUN_TEST(ProverkaPoiscaSZadanimStatusom);
-    RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
     RUN_TEST(ProverkaVichisleniyaRelevance);
 }
 
