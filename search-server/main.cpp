@@ -11,6 +11,7 @@
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+
 const double COMPARISON_LIMIT = 1e-6;
 
 string ReadLine() {
