@@ -6,10 +6,12 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <numeric>
 
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double COMPARISON_LIMIT = 1e-6;
 
 string ReadLine() {
     string s;
@@ -82,7 +84,9 @@ public:
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words) {
         for (const auto word : MakeUniqueNonEmptyStrings(stop_words)) {
-            IsValidWord(word);
+            if (!IsValidWord(word)) {
+                throw invalid_argument("Obnarujen spec simvol"s);
+            }
             stop_words_.insert(word);
         }
     }
@@ -115,11 +119,10 @@ public:
         
         sort(matched_documents.begin(), matched_documents.end(),
              [](const Document& lhs, const Document& rhs) {
-                 if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                 if (abs(lhs.relevance - rhs.relevance) < COMPARISON_LIMIT) {
                      return lhs.rating > rhs.rating;
-                 } else {
-                     return lhs.relevance > rhs.relevance;
                  }
+                 return lhs.relevance > rhs.relevance;
              });
         if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
             matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
@@ -183,19 +186,19 @@ private:
         return stop_words_.count(word) > 0;
     }
 
-    void IsValidWord(const string& word) const {
+    bool IsValidWord(const string& word) const {
         // A valid word must not contain special characters
-        if (!none_of(word.begin(), word.end(), [](char c) {
+        return none_of(word.begin(), word.end(), [](char c) {
             return c >= '\0' && c < ' ';
-        })) {
-            throw invalid_argument("Obnarujen spec simvol"s);
-        }
+        });
     }
     
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
-            IsValidWord(word);
+            if (!IsValidWord(word)) {
+                throw invalid_argument("Obnarujen spec simvol"s);
+            }
             if (!IsStopWord(word)) {
                 words.push_back(word);
             }
@@ -207,17 +210,13 @@ private:
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = 0;
-        for (const int rating : ratings) {
-            rating_sum += rating;
-        }
-        return rating_sum / static_cast<int>(ratings.size());
+        return accumulate(ratings.begin(), ratings.end(), 0) / static_cast<int>(ratings.size());
     }
 
     struct QueryWord {
         string data;
-        bool is_minus;
-        bool is_stop;
+        bool is_minus = false;
+        bool is_stop = false;
     };
 
     QueryWord ParseQueryWord(string text) const {
@@ -241,8 +240,10 @@ private:
     Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWords(text)) {
+            if (!IsValidWord(word)) {
+                throw invalid_argument("Obnarujen spec simvol"s);
+            }
             const auto query_word = ParseQueryWord(word);
-            IsValidWord(word);
             if (!query_word.is_stop) {
                 if (query_word.is_minus) {
                     query.minus_words.insert(query_word.data);
@@ -260,10 +261,10 @@ private:
     }
 
     template <typename DocumentPredicate>
-    vector<Document> FindAllDocuments(const optional<Query>& query,
+    vector<Document> FindAllDocuments(const Query& query,
                                       DocumentPredicate document_predicate) const {
         map<int, double> document_to_relevance;
-        for (const string& word : query->plus_words) {
+        for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
@@ -276,7 +277,7 @@ private:
             }
         }
 
-        for (const string& word : query->minus_words) {
+        for (const string& word : query.minus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
