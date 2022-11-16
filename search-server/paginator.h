@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
+#include <string>
+#include <cassert>
 
 template <typename Iterator>
 class IteratorRange {
@@ -72,6 +74,11 @@ size_t IteratorRange<Iterator>::size() const {
 
 template <typename Iterator>
 Paginator<Iterator>::Paginator(Iterator begining, Iterator ending, size_t page_size) {
+    if ((ending <= begining) || (page_size == 0)) {
+        using namespace std::string_literals;
+        throw std::invalid_argument("Incorrect page parameters"s);
+    }
+    
     for (size_t ostalos_elem = distance(begining, ending); ostalos_elem > 0;) {
         const size_t razmer_str = std::min(ostalos_elem, page_size);
         const Iterator konec_str = std::next(begining, razmer_str);

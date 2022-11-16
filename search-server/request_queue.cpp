@@ -8,7 +8,7 @@
 
 RequestQueue::RequestQueue(const SearchServer& search_server)
     : search_server_(search_server)
-    {
+{
         // напишите реализацию
         QueryResult dlya_inic;
         dlya_inic.kolvo_empty_request = 0;
