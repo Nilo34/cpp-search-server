@@ -1,4 +1,3 @@
-//Вставьте сюда своё решение из урока «Очередь запросов» темы «Стек, очередь, дек».‎
 #include "search_server.h"
 #include "document.h"
 #include "string_processing.h"
@@ -9,11 +8,15 @@
 #include <stdexcept>
 #include <cmath>
 #include <numeric>
+#include <map>
 
 SearchServer::SearchServer(const std::string& stop_words_text)
-        : SearchServer(
-            SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
-{}
+    : SearchServer(
+        SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
+{
+    std::map<std::string, double> pustoi;
+    document_to_word_freqs_[-1] = pustoi;
+}
 
 void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status,
     const std::vector<int>& ratings) {
@@ -25,10 +28,11 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
     
     const double inv_word_count = 1.0 / words.size();
     for (const std::string& word : words) {
-    word_to_document_freqs_[word][document_id] += inv_word_count;
+        word_to_document_freqs_[word][document_id] += inv_word_count;
+        document_to_word_freqs_[document_id][word] += inv_word_count;
     }
     documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
-    document_ids_.push_back(document_id);
+    document_ids_.insert(document_id);
 }
 
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
@@ -44,10 +48,6 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_quer
 
 int SearchServer::GetDocumentCount() const {
     return documents_.size();
-}
-
-int SearchServer::GetDocumentId(int index) const {
-    return document_ids_.at(index);
 }
 
 std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string& raw_query,
@@ -73,6 +73,52 @@ std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument
         }
     }
     return { matched_words, documents_.at(document_id).status };
+}
+
+std::set<int>::const_iterator SearchServer::begin() const {
+    return document_ids_.begin();
+}
+
+std::set<int>::const_iterator SearchServer::end() const {
+    return document_ids_.end();
+}
+
+void SearchServer::RemoveDocument(int document_id) {
+    auto word_list_document = GetWordFrequencies(document_id);
+    if (!word_list_document.empty()) {
+        documents_.erase(document_id);
+        for (auto& [word, _] : word_list_document) {
+            word_to_document_freqs_.at(word).erase(document_id);
+        }
+        document_to_word_freqs_.erase(document_id);
+        document_ids_.erase(document_id);
+    }
+}
+
+std::set<int> SearchServer::IsDuplicate (int document_id) {
+    if (document_to_word_freqs_.count(document_id) == 0) {
+        std::set<int> pustoi;
+        return pustoi;
+    }
+    
+    std::set<int> spisoc_duplicat;
+    
+    for (const auto& [doc_id, doc_word] : document_to_word_freqs_) {
+        bool dup = false;
+        if ((doc_id > document_id) && (doc_word.size() == document_to_word_freqs_.at(document_id).size())) {
+            dup = true;
+            for (const auto& [word, _] : document_to_word_freqs_.at(doc_id)) {
+                if (document_to_word_freqs_.at(document_id).count(word) == 0) {
+                    dup = false;
+                }
+            }
+        }
+        if (dup == true) {
+            spisoc_duplicat.insert(doc_id);
+        }
+    }
+    
+    return spisoc_duplicat;
 }
 
 bool SearchServer::IsStopWord(const std::string& word) const {
@@ -144,4 +190,12 @@ SearchServer::Query SearchServer::ParseQuery(const std::string& text) const {
 
 double SearchServer::ComputeWordInverseDocumentFreq(const std::string& word) const {
     return std::log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
+}
+
+const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
+    const auto it = document_to_word_freqs_.find(document_id);
+    if (it != document_to_word_freqs_.end()) {
+        return it -> second;
+    }
+    return document_to_word_freqs_.at(-1);
 }
