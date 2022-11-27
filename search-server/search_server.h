@@ -28,7 +28,6 @@ public:
         DocumentPredicate document_predicate) const;
 
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus status) const;
-
     std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
 
     int GetDocumentCount() const;
@@ -37,12 +36,11 @@ public:
         int document_id) const;
     
     std::set<int>::const_iterator begin() const;
-    
     std::set<int>::const_iterator end() const;
     
-    void RemoveDocument(int document_id);
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
     
-    std::set<int> IsDuplicate (int document_id);
+    void RemoveDocument(int document_id);
 
 private:
     struct DocumentData {
@@ -84,8 +82,6 @@ private:
     template <typename DocumentPredicate>
     std::vector<Document> FindAllDocuments(const Query& query,
         DocumentPredicate document_predicate) const;
-    
-    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 };
 
 template <typename StringContainer>

@@ -13,10 +13,7 @@
 SearchServer::SearchServer(const std::string& stop_words_text)
     : SearchServer(
         SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
-{
-    std::map<std::string, double> pustoi;
-    document_to_word_freqs_[-1] = pustoi;
-}
+{}
 
 void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status,
     const std::vector<int>& ratings) {
@@ -83,42 +80,27 @@ std::set<int>::const_iterator SearchServer::end() const {
     return document_ids_.end();
 }
 
-void SearchServer::RemoveDocument(int document_id) {
-    auto word_list_document = GetWordFrequencies(document_id);
-    if (!word_list_document.empty()) {
-        documents_.erase(document_id);
-        for (auto& [word, _] : word_list_document) {
-            word_to_document_freqs_.at(word).erase(document_id);
-        }
-        document_to_word_freqs_.erase(document_id);
-        document_ids_.erase(document_id);
+const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
+    const auto it = document_to_word_freqs_.find(document_id);
+    if (it != document_to_word_freqs_.end()) {
+        return it -> second;
     }
+    
+    static const std::map<std::string, double> void_map;
+    return void_map;
 }
 
-std::set<int> SearchServer::IsDuplicate (int document_id) {
-    if (document_to_word_freqs_.count(document_id) == 0) {
-        std::set<int> pustoi;
-        return pustoi;
+void SearchServer::RemoveDocument(int document_id) {
+    auto word_list_document = GetWordFrequencies(document_id);
+    if (word_list_document.empty()) {
+        return void();
     }
-    
-    std::set<int> spisoc_duplicat;
-    
-    for (const auto& [doc_id, doc_word] : document_to_word_freqs_) {
-        bool dup = false;
-        if ((doc_id > document_id) && (doc_word.size() == document_to_word_freqs_.at(document_id).size())) {
-            dup = true;
-            for (const auto& [word, _] : document_to_word_freqs_.at(doc_id)) {
-                if (document_to_word_freqs_.at(document_id).count(word) == 0) {
-                    dup = false;
-                }
-            }
-        }
-        if (dup == true) {
-            spisoc_duplicat.insert(doc_id);
-        }
+    documents_.erase(document_id);
+    for (auto& [word, _] : word_list_document) {
+        word_to_document_freqs_.at(word).erase(document_id);
     }
-    
-    return spisoc_duplicat;
+    document_to_word_freqs_.erase(document_id);
+    document_ids_.erase(document_id);
 }
 
 bool SearchServer::IsStopWord(const std::string& word) const {
@@ -190,12 +172,4 @@ SearchServer::Query SearchServer::ParseQuery(const std::string& text) const {
 
 double SearchServer::ComputeWordInverseDocumentFreq(const std::string& word) const {
     return std::log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
-}
-
-const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
-    const auto it = document_to_word_freqs_.find(document_id);
-    if (it != document_to_word_freqs_.end()) {
-        return it -> second;
-    }
-    return document_to_word_freqs_.at(-1);
 }
