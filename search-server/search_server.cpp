@@ -93,7 +93,7 @@ const std::map<std::string, double>& SearchServer::GetWordFrequencies(int docume
 void SearchServer::RemoveDocument(int document_id) {
     auto word_list_document = GetWordFrequencies(document_id);
     if (word_list_document.empty()) {
-        return void();
+        return;
     }
     documents_.erase(document_id);
     for (auto& [word, _] : word_list_document) {
