@@ -52,34 +52,10 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string_view& raw
             return document_status == status;
         });
 }
-std::vector<Document> SearchServer::FindTopDocuments(const std::execution::sequenced_policy&, 
-                                                     const std::string_view& raw_query, 
-                                                     DocumentStatus status) const {
-    return FindTopDocuments(std::execution::seq, 
-        raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
-            return document_status == status;
-        });
-}
-std::vector<Document> SearchServer::FindTopDocuments(const std::execution::parallel_policy&, 
-                                                     const std::string_view& raw_query, 
-                                                     DocumentStatus status) const {
-    return FindTopDocuments(std::execution::par, 
-        raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
-            return document_status == status;
-        });
-}
 
 
 std::vector<Document> SearchServer::FindTopDocuments(const std::string_view& raw_query) const {
     return FindTopDocuments(std::execution::seq, raw_query, DocumentStatus::ACTUAL);
-}
-std::vector<Document> SearchServer::FindTopDocuments(const std::execution::sequenced_policy&, 
-                                                     const std::string_view& raw_query) const {
-    return FindTopDocuments(std::execution::seq, raw_query, DocumentStatus::ACTUAL);
-}
-std::vector<Document> SearchServer::FindTopDocuments(const std::execution::parallel_policy&, 
-                                                     const std::string_view& raw_query) const {
-    return FindTopDocuments(std::execution::par, raw_query, DocumentStatus::ACTUAL);
 }
 
 
@@ -88,13 +64,13 @@ int SearchServer::GetDocumentCount() const {
 }
 
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(const std::string_view& raw_query,
-                                                                   int document_id) const {
+Match_Document SearchServer::MatchDocument(const std::string_view& raw_query,
+                                           int document_id) const {
     return MatchDocument(std::execution::seq, raw_query, document_id);
 }
 
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(const std::execution::sequenced_policy&, 
+Match_Document SearchServer::MatchDocument(const std::execution::sequenced_policy&, 
                             const std::string_view& raw_query, int document_id) const {
     const auto query = ParseQuery(raw_query);
     
@@ -121,7 +97,7 @@ std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDoc
 }
 
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(const std::execution::parallel_policy&, 
+Match_Document SearchServer::MatchDocument(const std::execution::parallel_policy&, 
                             const std::string_view& raw_query, int document_id) const {
     // PARALELKA
     const auto query = ParseQuery(raw_query, true);
@@ -274,7 +250,7 @@ SearchServer::QueryWord SearchServer::ParseQueryWord(const std::string_view& tex
 }
 
 
-SearchServer::Query SearchServer::ParseQuery(const std::string_view& text, bool do_not_sort) const {
+SearchServer::Query SearchServer::ParseQuery(const std::string_view& text, bool is_not_sort) const {
     Query result;
     for (const std::string_view& word : SplitIntoWords(text)) {
         const auto query_word = ParseQueryWord(word);
@@ -288,7 +264,7 @@ SearchServer::Query SearchServer::ParseQuery(const std::string_view& text, bool 
         }
     }
     
-    if (!do_not_sort) {
+    if (!is_not_sort) {
         std::sort(std::execution::par, result.minus_words.begin(), result.minus_words.end());
         std::sort(std::execution::par, result.plus_words.begin(), result.plus_words.end());
         
